@@ -1,0 +1,66 @@
+{
+  "name": "alfred-snippets-overflow",
+  "version": "1.0.0",
+  "description": "A lightweight macOS tray application for quick access to Alfred snippets",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "dev": "electron . --dev",
+    "build": "electron-builder",
+    "dist": "electron-builder --mac",
+    "postinstall": "electron-builder install-app-deps"
+  },
+  "keywords": [
+    "alfred",
+    "snippets",
+    "macos",
+    "electron",
+    "tray"
+  ],
+  "author": "Jeff Shomali",
+  "license": "MIT",
+  "devDependencies": {
+    "electron": "^27.0.0",
+    "electron-builder": "^24.6.4"
+  },
+  "dependencies": {
+    "chokidar": "^3.5.3",
+    "electron-store": "^8.1.0",
+    "marked": "^9.1.0",
+    "prismjs": "^1.29.0"
+  },
+  "build": {
+    "appId": "com.alfredsnippets.overflow",
+    "productName": "Alfred Snippets Overflow",
+    "directories": {
+      "output": "dist"
+    },
+    "mac": {
+      "category": "public.app-category.productivity",
+      "icon": "assets/icon.icns",
+      "target": [
+        "dmg",
+        "zip"
+      ],
+      "darkModeSupport": true,
+      "hardenedRuntime": true,
+      "gatekeeperAssess": false,
+      "entitlements": "build/entitlements.mac.plist",
+      "entitlementsInherit": "build/entitlements.mac.plist"
+    },
+    "dmg": {
+      "contents": [
+        {
+          "x": 130,
+          "y": 220
+        },
+        {
+          "x": 410,
+          "y": 220,
+          "type": "link",
+          "path": "/Applications"
+        }
+      ]
+    }
+  }
+}

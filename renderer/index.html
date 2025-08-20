@@ -1,0 +1,974 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Alfred Snippets Overflow</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'SF Pro Text', 'Helvetica Neue', sans-serif;
+            background: rgba(0, 0, 0, 0.5);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 0;
+            margin: 0;
+        }
+
+        /* Overlay background */
+        body::before {
+            content: '';
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.4);
+            z-index: -1;
+        }
+
+        /* Floating Window Container - 80% of screen */
+        .app-window {
+            width: 80vw;
+            height: 80vh;
+            max-width: 1400px;
+            max-height: 900px;
+            background: rgba(255, 255, 255, 0.98);
+            border-radius: 12px;
+            box-shadow: 0 22px 70px 4px rgba(0, 0, 0, 0.56),
+                        0 0 0 1px rgba(0, 0, 0, 0.1),
+                        inset 0 0 0 1px rgba(255, 255, 255, 0.1);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            animation: slideIn 0.3s ease-out;
+            position: relative;
+        }
+
+        /* Dark mode support */
+        @media (prefers-color-scheme: dark) {
+            body {
+                background: rgba(0, 0, 0, 0.7);
+            }
+            
+            .app-window {
+                background: rgba(28, 28, 30, 0.98);
+                box-shadow: 0 22px 70px 4px rgba(0, 0, 0, 0.8),
+                            0 0 0 1px rgba(255, 255, 255, 0.1),
+                            inset 0 0 0 1px rgba(255, 255, 255, 0.05);
+            }
+        }
+
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: scale(0.9);
+            }
+
+            to {
+                opacity: 1;
+                transform: scale(1);
+            }
+        }
+
+        @keyframes fadeOut {
+            from {
+                opacity: 1;
+                transform: scale(1);
+            }
+
+            to {
+                opacity: 0;
+                transform: scale(0.95);
+            }
+        }
+
+        /* Header Bar */
+        .header-bar {
+            height: 60px;
+            padding: 12px 20px;
+            border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+            display: flex;
+            align-items: center;
+            background: rgba(249, 249, 249, 0.8);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+        }
+
+        @media (prefers-color-scheme: dark) {
+            .header-bar {
+                background: rgba(44, 44, 46, 0.8);
+                border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            }
+        }
+
+        .search-container {
+            flex: 1;
+            position: relative;
+        }
+
+        .search-icon {
+            position: absolute;
+            left: 12px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: #8e8e93;
+        }
+
+        .search-input {
+            width: 100%;
+            height: 36px;
+            padding: 0 36px 0 40px;
+            border: 1px solid rgba(0, 0, 0, 0.15);
+            border-radius: 8px;
+            font-size: 14px;
+            background: rgba(255, 255, 255, 0.9);
+            transition: all 0.2s;
+        }
+
+        .search-input:focus {
+            outline: none;
+            border-color: #007aff;
+            box-shadow: 0 0 0 3px rgba(0, 122, 255, 0.1);
+        }
+
+        @media (prefers-color-scheme: dark) {
+            .search-input {
+                background: rgba(60, 60, 62, 0.8);
+                border: 1px solid rgba(255, 255, 255, 0.15);
+                color: #f5f5f7;
+            }
+            
+            .search-input::placeholder {
+                color: rgba(245, 245, 247, 0.5);
+            }
+
+            .search-input:focus {
+                border-color: #0a84ff;
+                box-shadow: 0 0 0 3px rgba(10, 132, 255, 0.1);
+            }
+        }
+
+        .close-button {
+            width: 24px;
+            height: 24px;
+            margin-left: 16px;
+            background: #ff5f57;
+            border: none;
+            border-radius: 50%;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: rgba(0, 0, 0, 0);
+            transition: color 0.2s;
+        }
+
+        .close-button:hover {
+            color: rgba(0, 0, 0, 0.3);
+        }
+
+        .close-button::after {
+            content: '×';
+            font-size: 16px;
+        }
+
+        /* Main Layout */
+        .main-layout {
+            flex: 1;
+            display: flex;
+            overflow: hidden;
+        }
+
+        /* Sidebar */
+        .sidebar {
+            width: 220px;
+            background: rgba(245, 245, 247, 0.8);
+            border-right: 1px solid rgba(0, 0, 0, 0.1);
+            padding: 16px 0;
+            overflow-y: auto;
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+        }
+
+        @media (prefers-color-scheme: dark) {
+            .sidebar {
+                background: rgba(44, 44, 46, 0.8);
+                border-right: 1px solid rgba(255, 255, 255, 0.1);
+            }
+        }
+
+        .sidebar-section {
+            margin-bottom: 24px;
+        }
+
+        .section-title {
+            padding: 0 16px;
+            margin-bottom: 8px;
+            font-size: 11px;
+            font-weight: 600;
+            color: rgba(142, 142, 147, 0.9);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        @media (prefers-color-scheme: dark) {
+            .section-title {
+                color: rgba(152, 152, 157, 0.9);
+            }
+        }
+
+        .category-item {
+            padding: 8px 16px;
+            display: flex;
+            align-items: center;
+            cursor: pointer;
+            transition: background-color 0.2s;
+            position: relative;
+        }
+
+        .category-item:hover {
+            background: rgba(0, 122, 255, 0.08);
+        }
+
+        .category-item.active {
+            background: rgba(0, 122, 255, 0.12);
+            color: #007aff;
+        }
+
+        .expand-arrow {
+            width: 12px;
+            margin-right: 4px;
+            transition: transform 0.2s;
+            color: #8e8e93;
+        }
+
+        .expand-arrow.expanded {
+            transform: rotate(90deg);
+        }
+
+        .category-icon {
+            margin-right: 8px;
+            font-size: 16px;
+        }
+
+        .category-name {
+            flex: 1;
+            font-size: 14px;
+        }
+
+        @media (prefers-color-scheme: dark) {
+            .category-item,
+            .special-section {
+                color: #f5f5f7;
+            }
+            
+            .category-item.active {
+                background: rgba(10, 132, 255, 0.15);
+                color: #0a84ff;
+            }
+            
+            .category-item:hover,
+            .special-section:hover {
+                background: rgba(10, 132, 255, 0.08);
+            }
+        }
+
+        .category-count {
+            font-size: 12px;
+            color: #8e8e93;
+        }
+
+        .subcategory {
+            padding-left: 36px;
+        }
+
+        .special-section {
+            padding: 8px 16px;
+            display: flex;
+            align-items: center;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+
+        .special-section:hover {
+            background: rgba(0, 122, 255, 0.08);
+        }
+
+        /* Content Area */
+        .content-area {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        /* Snippet List */
+        .snippet-list {
+            height: 50%;
+            overflow-y: auto;
+            padding: 16px;
+            border-bottom: 1px solid #e5e5e7;
+        }
+
+        .snippet-card {
+            padding: 12px;
+            margin-bottom: 8px;
+            border: 1px solid rgba(0, 0, 0, 0.1);
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.2s;
+            background: rgba(255, 255, 255, 0.8);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+        }
+
+        @media (prefers-color-scheme: dark) {
+            .snippet-card {
+                background: rgba(60, 60, 62, 0.5);
+                border: 1px solid rgba(255, 255, 255, 0.1);
+            }
+        }
+
+        .snippet-card:hover {
+            border-color: #007aff;
+            box-shadow: 0 2px 8px rgba(0, 122, 255, 0.15);
+            transform: translateY(-1px);
+        }
+
+        .snippet-card.active {
+            border-color: #007aff;
+            background: rgba(0, 122, 255, 0.04);
+        }
+
+        @media (prefers-color-scheme: dark) {
+            .snippet-card:hover {
+                border-color: #0a84ff;
+                box-shadow: 0 2px 8px rgba(10, 132, 255, 0.2);
+            }
+            
+            .snippet-card.active {
+                border-color: #0a84ff;
+                background: rgba(10, 132, 255, 0.08);
+            }
+        }
+
+        .snippet-header {
+            display: flex;
+            align-items: center;
+            margin-bottom: 8px;
+        }
+
+        .snippet-title {
+            flex: 1;
+            font-size: 15px;
+            font-weight: 500;
+            color: #1d1d1f;
+        }
+
+        @media (prefers-color-scheme: dark) {
+            .snippet-title {
+                color: #f5f5f7;
+            }
+        }
+
+        .star-button {
+            background: none;
+            border: none;
+            cursor: pointer;
+            font-size: 18px;
+            color: #c7c7cc;
+            transition: color 0.2s;
+        }
+
+        .star-button.favorited {
+            color: #ffcc00;
+        }
+
+        .star-button:hover {
+            color: #ffcc00;
+        }
+
+        .snippet-meta {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 8px;
+        }
+
+        .keyword-badge {
+            padding: 2px 8px;
+            background: #007aff;
+            color: white;
+            border-radius: 4px;
+            font-size: 11px;
+            font-family: 'SF Mono', Monaco, monospace;
+            font-weight: 500;
+        }
+
+        @media (prefers-color-scheme: dark) {
+            .keyword-badge {
+                background: #0a84ff;
+            }
+        }
+
+        .category-badge {
+            padding: 2px 8px;
+            background: rgba(242, 242, 247, 0.8);
+            color: #6e6e73;
+            border-radius: 4px;
+            font-size: 11px;
+        }
+
+        @media (prefers-color-scheme: dark) {
+            .category-badge {
+                background: rgba(60, 60, 62, 0.8);
+                color: #98989d;
+            }
+        }
+
+        .snippet-preview {
+            font-family: 'SF Mono', Monaco, monospace;
+            font-size: 12px;
+            color: #6e6e73;
+            line-height: 1.4;
+            overflow: hidden;
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+        }
+
+        @media (prefers-color-scheme: dark) {
+            .snippet-preview {
+                color: #98989d;
+            }
+        }
+
+        /* Snippet Detail View */
+        .snippet-detail {
+            flex: 1;
+            padding: 24px;
+            overflow-y: auto;
+        }
+
+        .detail-title {
+            font-size: 24px;
+            font-weight: 600;
+            color: #1d1d1f;
+            margin-bottom: 12px;
+        }
+
+        @media (prefers-color-scheme: dark) {
+            .detail-title {
+                color: #f5f5f7;
+            }
+        }
+
+        .detail-meta {
+            display: flex;
+            gap: 24px;
+            margin-bottom: 20px;
+            font-size: 13px;
+            color: #6e6e73;
+        }
+
+        .detail-meta span {
+            font-weight: 600;
+            color: #1d1d1f;
+        }
+
+        @media (prefers-color-scheme: dark) {
+            .detail-meta {
+                color: #98989d;
+            }
+            
+            .detail-meta span {
+                color: #f5f5f7;
+            }
+        }
+
+        .code-preview {
+            background: rgba(249, 249, 249, 0.8);
+            border: 1px solid rgba(0, 0, 0, 0.1);
+            border-radius: 8px;
+            padding: 16px;
+            margin-bottom: 20px;
+            max-height: 200px;
+            overflow-y: auto;
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+        }
+
+        @media (prefers-color-scheme: dark) {
+            .code-preview {
+                background: rgba(60, 60, 62, 0.5);
+                border: 1px solid rgba(255, 255, 255, 0.1);
+            }
+        }
+
+        .code-content {
+            font-family: 'SF Mono', Monaco, monospace;
+            font-size: 13px;
+            line-height: 1.6;
+            color: #1d1d1f;
+            white-space: pre-wrap;
+        }
+
+        @media (prefers-color-scheme: dark) {
+            .code-content {
+                color: #f5f5f7;
+            }
+        }
+
+        /* Action Buttons */
+        .action-buttons {
+            display: flex;
+            gap: 12px;
+        }
+
+        .btn {
+            padding: 8px 16px;
+            border-radius: 6px;
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s;
+            border: none;
+        }
+
+        .btn-primary {
+            background: #007aff;
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: #0051d5;
+        }
+
+        .btn-secondary {
+            background: white;
+            color: #007aff;
+            border: 1px solid #007aff;
+        }
+
+        .btn-secondary:hover {
+            background: rgba(0, 122, 255, 0.08);
+        }
+
+        .btn-tertiary {
+            background: #f2f2f7;
+            color: #1d1d1f;
+        }
+
+        .btn-tertiary:hover {
+            background: #e5e5ea;
+        }
+
+        /* Toast Notification */
+        .toast {
+            position: fixed;
+            bottom: 40px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(52, 199, 89, 0.95);
+            color: white;
+            padding: 12px 24px;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 500;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            opacity: 0;
+            animation: toastSlide 2s ease-out;
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+        }
+
+        @keyframes toastSlide {
+            0% {
+                opacity: 0;
+                transform: translateX(-50%) translateY(20px);
+            }
+
+            10%,
+            90% {
+                opacity: 1;
+                transform: translateX(-50%) translateY(0);
+            }
+
+            100% {
+                opacity: 0;
+                transform: translateX(-50%) translateY(20px);
+            }
+        }
+
+        /* Scrollbar Styling */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: 4px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: rgba(0, 0, 0, 0.4);
+        }
+
+        @media (prefers-color-scheme: dark) {
+            ::-webkit-scrollbar-thumb {
+                background: rgba(255, 255, 255, 0.2);
+            }
+            
+            ::-webkit-scrollbar-thumb:hover {
+                background: rgba(255, 255, 255, 0.4);
+            }
+        }
+
+        /* No snippets message */
+        .no-snippets {
+            text-align: center;
+            padding: 40px 20px;
+            color: #8e8e93;
+            font-size: 14px;
+        }
+
+        @media (prefers-color-scheme: dark) {
+            .no-snippets {
+                color: #98989d;
+            }
+        }
+
+        /* Error toast */
+        .toast.error {
+            background: rgba(255, 59, 48, 0.95);
+        }
+
+        /* Responsive adjustments */
+        @media (max-width: 768px) {
+            .app-window {
+                width: 95vw;
+                height: 95vh;
+            }
+            
+            .sidebar {
+                width: 180px;
+            }
+        }
+
+        @media (min-width: 1920px) {
+            .app-window {
+                width: 75vw;
+                height: 75vh;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div class="app-window">
+        <!-- Header Bar -->
+        <div class="header-bar">
+            <div class="search-container">
+                <span class="search-icon">🔍</span>
+                <input type="text" class="search-input" placeholder="Search snippets..." />
+            </div>
+            <button class="close-button"></button>
+        </div>
+
+        <!-- Main Layout -->
+        <div class="main-layout">
+            <!-- Sidebar -->
+            <div class="sidebar">
+                <div class="sidebar-section">
+                    <div class="section-title">Categories</div>
+
+                    <div class="category-item active">
+                        <span class="expand-arrow expanded">▶</span>
+                        <span class="category-icon">📁</span>
+                        <span class="category-name">React</span>
+                        <span class="category-count">(18)</span>
+                    </div>
+
+                    <div class="category-item subcategory">
+                        <span class="category-icon">📄</span>
+                        <span class="category-name">Hooks</span>
+                        <span class="category-count">(8)</span>
+                    </div>
+
+                    <div class="category-item subcategory">
+                        <span class="category-icon">📄</span>
+                        <span class="category-name">Components</span>
+                        <span class="category-count">(10)</span>
+                    </div>
+
+                    <div class="category-item">
+                        <span class="expand-arrow">▶</span>
+                        <span class="category-icon">📁</span>
+                        <span class="category-name">Interview</span>
+                        <span class="category-count">(25)</span>
+                    </div>
+
+                    <div class="category-item">
+                        <span class="expand-arrow">▶</span>
+                        <span class="category-icon">📁</span>
+                        <span class="category-name">Linux</span>
+                        <span class="category-count">(12)</span>
+                    </div>
+
+                    <div class="category-item">
+                        <span class="expand-arrow">▶</span>
+                        <span class="category-icon">📁</span>
+                        <span class="category-name">JavaScript</span>
+                        <span class="category-count">(32)</span>
+                    </div>
+
+                    <div class="category-item">
+                        <span class="expand-arrow">▶</span>
+                        <span class="category-icon">📁</span>
+                        <span class="category-name">Python</span>
+                        <span class="category-count">(21)</span>
+                    </div>
+                </div>
+
+                <div class="sidebar-section">
+                    <div class="special-section">
+                        <span class="category-icon">⭐</span>
+                        <span class="category-name">Favorites</span>
+                    </div>
+
+                    <div class="special-section">
+                        <span class="category-icon">🕐</span>
+                        <span class="category-name">Recent</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Content Area -->
+            <div class="content-area">
+                <!-- Snippet List -->
+                <div class="snippet-list">
+                    <div class="snippet-card active">
+                        <div class="snippet-header">
+                            <div class="snippet-title">React useState Hook</div>
+                            <button class="star-button favorited">★</button>
+                        </div>
+                        <div class="snippet-meta">
+                            <span class="keyword-badge">rstate</span>
+                            <span class="category-badge">React / Hooks</span>
+                        </div>
+                        <div class="snippet-preview">const [state, setState] = useState(initialValue);
+                            // Update state with setState(newValue)</div>
+                    </div>
+
+                    <div class="snippet-card">
+                        <div class="snippet-header">
+                            <div class="snippet-title">React Functional Component</div>
+                            <button class="star-button">☆</button>
+                        </div>
+                        <div class="snippet-meta">
+                            <span class="keyword-badge">rfc</span>
+                            <span class="category-badge">React / Components</span>
+                        </div>
+                        <div class="snippet-preview">const ComponentName = () => {
+                            return (
+                            &lt;div&gt;Component Content&lt;/div&gt;
+                            );
+                            };</div>
+                    </div>
+
+                    <div class="snippet-card">
+                        <div class="snippet-header">
+                            <div class="snippet-title">useEffect Hook</div>
+                            <button class="star-button favorited">★</button>
+                        </div>
+                        <div class="snippet-meta">
+                            <span class="keyword-badge">reffect</span>
+                            <span class="category-badge">React / Hooks</span>
+                        </div>
+                        <div class="snippet-preview">useEffect(() => {
+                            // Effect code here
+                            return () => {
+                            // Cleanup code
+                            };
+                            }, [dependencies]);</div>
+                    </div>
+
+                    <div class="snippet-card">
+                        <div class="snippet-header">
+                            <div class="snippet-title">Custom Hook Template</div>
+                            <button class="star-button">☆</button>
+                        </div>
+                        <div class="snippet-meta">
+                            <span class="keyword-badge">rhook</span>
+                            <span class="category-badge">React / Hooks</span>
+                        </div>
+                        <div class="snippet-preview">const useCustomHook = (initialValue) => {
+                            const [value, setValue] = useState(initialValue);
+                            // Hook logic...</div>
+                    </div>
+                </div>
+
+                <!-- Snippet Detail View -->
+                <div class="snippet-detail">
+                    <h2 class="detail-title">React useState Hook</h2>
+
+                    <div class="detail-meta">
+                        <div>Keyword: <span>rstate</span></div>
+                        <div>Category: <span>React / Hooks</span></div>
+                    </div>
+
+                    <div class="code-preview">
+                        <pre class="code-content">const [state, setState] = useState(initialValue);
+
+// Update state
+setState(newValue);
+
+// Update based on previous state
+setState(prevState => prevState + 1);
+
+// Object state update
+setState(prevState => ({
+  ...prevState,
+  key: newValue
+}));</pre>
+                    </div>
+
+                    <div class="action-buttons">
+                        <button class="btn btn-primary" onclick="showToast()">Copy to Clipboard</button>
+                        <button class="btn btn-secondary" onclick="showToast()">Copy & Close</button>
+                        <button class="btn btn-tertiary">Insert at Cursor</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Load the main application script -->
+    <script src="app.js"></script>
+    
+    <script>
+        // Legacy code - kept for reference but functionality moved to app.js
+        /*
+        // Toggle favorite status
+        document.querySelectorAll('.star-button').forEach(button => {
+            button.addEventListener('click', (e) => {
+                e.stopPropagation();
+                if (button.classList.contains('favorited')) {
+                    button.classList.remove('favorited');
+                    button.textContent = '☆';
+                } else {
+                    button.classList.add('favorited');
+                    button.textContent = '★';
+                }
+            });
+        });
+
+        // Snippet card selection
+        document.querySelectorAll('.snippet-card').forEach(card => {
+            card.addEventListener('click', () => {
+                document.querySelectorAll('.snippet-card').forEach(c => c.classList.remove('active'));
+                card.classList.add('active');
+            });
+        });
+
+        // Category selection
+        document.querySelectorAll('.category-item').forEach(item => {
+            item.addEventListener('click', () => {
+                // Toggle expand arrow if it has one
+                const arrow = item.querySelector('.expand-arrow');
+                if (arrow) {
+                    arrow.classList.toggle('expanded');
+                }
+
+                // Set active state
+                document.querySelectorAll('.category-item').forEach(i => i.classList.remove('active'));
+                item.classList.add('active');
+            });
+        });
+
+        // Show toast notification
+        function showToast() {
+            const existingToast = document.querySelector('.toast');
+            if (existingToast) {
+                existingToast.remove();
+            }
+
+            const toast = document.createElement('div');
+            toast.className = 'toast';
+            toast.innerHTML = '✓ Copied to clipboard';
+            document.body.appendChild(toast);
+
+            setTimeout(() => {
+                toast.remove();
+            }, 2000);
+        }
+
+        // Search functionality
+        const searchInput = document.querySelector('.search-input');
+        searchInput.addEventListener('input', (e) => {
+            const searchTerm = e.target.value.toLowerCase();
+            document.querySelectorAll('.snippet-card').forEach(card => {
+                const title = card.querySelector('.snippet-title').textContent.toLowerCase();
+                const preview = card.querySelector('.snippet-preview').textContent.toLowerCase();
+                const keyword = card.querySelector('.keyword-badge').textContent.toLowerCase();
+
+                if (title.includes(searchTerm) || preview.includes(searchTerm) || keyword.includes(searchTerm)) {
+                    card.style.display = 'block';
+                } else {
+                    card.style.display = 'none';
+                }
+            });
+        });
+
+        // Close window function
+        function closeWindow() {
+            const appWindow = document.querySelector('.app-window');
+            appWindow.style.animation = 'fadeOut 0.2s ease-out';
+            document.body.style.animation = 'fadeOut 0.2s ease-out';
+            setTimeout(() => {
+                // In Electron, this would trigger window.close()
+                appWindow.style.display = 'none';
+                document.body.style.display = 'none';
+            }, 200);
+        }
+
+        // Close button
+        document.querySelector('.close-button').addEventListener('click', closeWindow);
+
+        // ESC key to close
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') {
+                closeWindow();
+            }
+        });
+
+        // Click outside to close
+        document.addEventListener('click', (e) => {
+            const appWindow = document.querySelector('.app-window');
+            if (!appWindow.contains(e.target)) {
+                closeWindow();
+            }
+        });
+        */
+    </script>
+</body>
+
+</html>
