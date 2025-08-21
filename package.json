@@ -1,13 +1,12 @@
 {
 	"name": "alfred-lens",
-	"version": "1.0.0",
+	"version": "1.0.5",
 	"description": "A modern macOS application for viewing and managing Alfred snippets with style",
 	"main": "main.js",
 	"scripts": {
 		"start": "electron .",
 		"dev": "electron . --dev",
-		"build": "electron-builder",
-		"dist": "electron-builder --mac",
+		"build": "npm version patch --no-git-tag-version && electron-builder --mac",
 		"postinstall": "electron-builder install-app-deps"
 	},
 	"keywords": [
@@ -45,10 +44,11 @@
 				"zip"
 			],
 			"darkModeSupport": true,
-			"hardenedRuntime": true,
+			"hardenedRuntime": false,
 			"gatekeeperAssess": false,
 			"entitlements": "build/entitlements.mac.plist",
-			"entitlementsInherit": "build/entitlements.mac.plist"
+			"entitlementsInherit": "build/entitlements.mac.plist",
+			"identity": null
 		},
 		"dmg": {
 			"contents": [
