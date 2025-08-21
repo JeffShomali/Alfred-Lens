@@ -12,7 +12,7 @@ A professional macOS application for viewing and managing Alfred snippets with a
 ### Quick Install (Recommended)
 
 1. **Download the latest release:**
-   - Go to the [Releases](https://github.com/[yourusername]/alfred-lens/releases/latest) page
+   - Go to the [Releases](https://github.com/JeffShomali/alfred-lens/releases/latest) page
    - Download `Alfred.Lens-1.0.0.dmg` (or latest version)
    
 2. **Install the application:**
@@ -95,7 +95,7 @@ Access Settings via `⌘,` or the gear icon to customize:
 
 ```bash
 # Clone the repository
-git clone https://github.com/[yourusername]/alfred-lens.git
+git clone https://github.com/JeffShomali/alfred-lens.git
 cd alfred-lens
 
 # Install dependencies
@@ -186,9 +186,9 @@ We welcome contributions! Please see our [Contributing Guide](CONTRIBUTING.md) f
 
 ### Getting Help
 
-- **Documentation**: Check this README and the [Wiki](https://github.com/[yourusername]/alfred-lens/wiki)
-- **Issues**: Report bugs on the [Issues](https://github.com/[yourusername]/alfred-lens/issues) page
-- **Discussions**: Join our [community discussions](https://github.com/[yourusername]/alfred-lens/discussions)
+- **Documentation**: Check this README and the [Wiki](https://github.com/JeffShomali/alfred-lens/wiki)
+- **Issues**: Report bugs on the [Issues](https://github.com/JeffShomali/alfred-lens/issues) page
+- **Discussions**: Join our [community discussions](https://github.com/JeffShomali/alfred-lens/discussions)
 
 ### Reporting Issues
 
