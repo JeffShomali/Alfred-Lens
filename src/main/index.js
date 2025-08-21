@@ -110,10 +110,8 @@ class Application {
 
     // Handle window-all-closed event
     app.on('window-all-closed', () => {
-      // On macOS, keep the app running in the tray
-      if (process.platform !== 'darwin') {
-        app.quit();
-      }
+      // Keep the app running in the background - never quit automatically
+      // App stays in tray/menu bar until manually quit
     });
 
     // Handle before-quit event
