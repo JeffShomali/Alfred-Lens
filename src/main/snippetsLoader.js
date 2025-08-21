@@ -6,6 +6,8 @@
 const fs = require('fs').promises;
 const path = require('path');
 const config = require('../config/app.config');
+const { execSync } = require('child_process');
+const os = require('os');
 
 class SnippetsLoader {
   constructor() {
@@ -29,6 +31,7 @@ class SnippetsLoader {
       const allSnippets = [];
       const categoriesData = {};
 
+      // Load snippets from regular folders
       for (const category of categories) {
         const categorySnippets = await this.loadCategorySnippets(
           path.join(snippetsPath, category)
@@ -41,6 +44,15 @@ class SnippetsLoader {
         };
 
         allSnippets.push(...categorySnippets);
+      }
+
+      // Also load snippets from .alfredsnippets bundle files
+      const bundleSnippets = await this.loadBundleSnippets();
+      for (const [category, data] of Object.entries(bundleSnippets)) {
+        if (!categoriesData[category]) {
+          categoriesData[category] = data;
+          allSnippets.push(...data.snippets);
+        }
       }
 
       this.snippetsCache = {
@@ -171,11 +183,80 @@ class SnippetsLoader {
   }
 
   /**
+   * Load snippets from .alfredsnippets bundle files
+   */
+  async loadBundleSnippets() {
+    const categoriesData = {};
+    
+    try {
+      // Look for .alfredsnippets files in common locations
+      const searchPaths = [
+        path.join(os.homedir(), 'Downloads'),
+        path.join(os.homedir(), 'Documents'),
+        path.join(os.homedir(), 'Desktop')
+      ];
+
+      for (const searchPath of searchPaths) {
+        try {
+          const files = await fs.readdir(searchPath);
+          const bundleFiles = files.filter(f => f.endsWith('.alfredsnippets'));
+          
+          for (const bundleFile of bundleFiles) {
+            const bundlePath = path.join(searchPath, bundleFile);
+            const categoryName = bundleFile.replace('.alfredsnippets', '');
+            
+            try {
+              // Create temporary directory
+              const tempDir = path.join(os.tmpdir(), 'alfred-lens-temp', categoryName);
+              await fs.mkdir(path.join(os.tmpdir(), 'alfred-lens-temp'), { recursive: true });
+              await fs.mkdir(tempDir, { recursive: true });
+              
+              // Extract bundle
+              execSync(`unzip -q -o "${bundlePath}" -d "${tempDir}"`, { stdio: 'ignore' });
+              
+              // Load snippets from extracted files
+              const snippets = await this.loadCategorySnippets(tempDir);
+              
+              if (snippets.length > 0) {
+                categoriesData[categoryName] = {
+                  name: categoryName,
+                  icon: this.getCategoryIcon(categoryName),
+                  snippets: snippets.map(s => ({ ...s, category: categoryName }))
+                };
+              }
+              
+              // Clean up temp directory
+              try {
+                execSync(`rm -rf "${tempDir}"`, { stdio: 'ignore' });
+              } catch (e) {
+                // Ignore cleanup errors
+              }
+            } catch (error) {
+              console.error(`Failed to load bundle ${bundleFile}:`, error);
+            }
+          }
+        } catch (error) {
+          // Directory might not exist or be inaccessible
+          console.log(`Could not access ${searchPath}`);
+        }
+      }
+    } catch (error) {
+      console.error('Failed to load bundle snippets:', error);
+    }
+    
+    return categoriesData;
+  }
+
+  /**
    * Get category icon based on name
    */
   getCategoryIcon(categoryName) {
     const name = categoryName.toLowerCase();
     
+    if (name.includes('laravel')) return '🔴';
+    if (name.includes('dynamic')) return '🔄';
+    if (name.includes('nextjs') || name.includes('next')) return '▲';
+    if (name.includes('waimut')) return '🌰';
     if (name.includes('react')) return '⚛️';
     if (name.includes('vue')) return '💚';
     if (name.includes('angular')) return '🅰️';
