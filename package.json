@@ -1,6 +1,6 @@
 {
 	"name": "alfred-lens",
-	"version": "1.0.7",
+	"version": "1.0.8",
 	"description": "A modern macOS application for viewing and managing Alfred snippets with style",
 	"main": "main.js",
 	"scripts": {
