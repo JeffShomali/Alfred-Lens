@@ -1,0 +1,858 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Alfred Lens - Settings</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'SF Pro Text', 'Helvetica Neue', sans-serif;
+            background: #f5f5f7;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        @media (prefers-color-scheme: dark) {
+            body {
+                background: #1d1d1f;
+            }
+        }
+
+        .settings-window {
+            width: 100vw;
+            height: 100vh;
+            background: white;
+            display: flex;
+            flex-direction: column;
+        }
+
+        @media (prefers-color-scheme: dark) {
+            .settings-window {
+                background: #2c2c2e;
+            }
+        }
+
+        /* Header */
+        .settings-header {
+            padding: 20px 30px;
+            border-bottom: 1px solid #e5e5e7;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            background: rgba(255, 255, 255, 0.8);
+            backdrop-filter: blur(10px);
+        }
+
+        @media (prefers-color-scheme: dark) {
+            .settings-header {
+                background: rgba(44, 44, 46, 0.8);
+                border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            }
+        }
+
+        .settings-title {
+            font-size: 24px;
+            font-weight: 600;
+            color: #1d1d1f;
+        }
+
+        @media (prefers-color-scheme: dark) {
+            .settings-title {
+                color: #f5f5f7;
+            }
+        }
+
+        .close-settings {
+            width: 32px;
+            height: 32px;
+            border-radius: 6px;
+            background: #f2f2f7;
+            border: none;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s;
+            font-size: 18px;
+            color: #6e6e73;
+        }
+
+        .close-settings:hover {
+            background: #e5e5ea;
+        }
+
+        @media (prefers-color-scheme: dark) {
+            .close-settings {
+                background: rgba(60, 60, 62, 0.8);
+                color: #98989d;
+            }
+            
+            .close-settings:hover {
+                background: rgba(60, 60, 62, 1);
+            }
+        }
+
+        /* Settings Content */
+        .settings-content {
+            flex: 1;
+            overflow-y: auto;
+            padding: 30px;
+        }
+
+        .settings-section {
+            margin-bottom: 40px;
+            max-width: 600px;
+        }
+
+        .section-header {
+            font-size: 18px;
+            font-weight: 600;
+            color: #1d1d1f;
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid #e5e5e7;
+        }
+
+        @media (prefers-color-scheme: dark) {
+            .section-header {
+                color: #f5f5f7;
+                border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            }
+        }
+
+        .setting-item {
+            margin-bottom: 20px;
+        }
+
+        .setting-label {
+            display: block;
+            font-size: 14px;
+            font-weight: 500;
+            color: #1d1d1f;
+            margin-bottom: 8px;
+        }
+
+        @media (prefers-color-scheme: dark) {
+            .setting-label {
+                color: #f5f5f7;
+            }
+        }
+
+        .setting-description {
+            font-size: 12px;
+            color: #6e6e73;
+            margin-bottom: 8px;
+        }
+
+        @media (prefers-color-scheme: dark) {
+            .setting-description {
+                color: #98989d;
+            }
+        }
+
+        .setting-input {
+            width: 100%;
+            padding: 10px 12px;
+            border: 1px solid #d1d1d6;
+            border-radius: 8px;
+            font-size: 14px;
+            background: white;
+            transition: all 0.2s;
+        }
+
+        .setting-input:focus {
+            outline: none;
+            border-color: #007aff;
+            box-shadow: 0 0 0 3px rgba(0, 122, 255, 0.1);
+        }
+
+        @media (prefers-color-scheme: dark) {
+            .setting-input {
+                background: rgba(60, 60, 62, 0.5);
+                border: 1px solid rgba(255, 255, 255, 0.15);
+                color: #f5f5f7;
+            }
+            
+            .setting-input:focus {
+                border-color: #0a84ff;
+                box-shadow: 0 0 0 3px rgba(10, 132, 255, 0.1);
+            }
+        }
+
+        .shortcut-input {
+            background: #f2f2f7;
+            cursor: pointer;
+            user-select: none;
+        }
+
+        .shortcut-input:focus {
+            background: white;
+        }
+
+        @media (prefers-color-scheme: dark) {
+            .shortcut-input {
+                background: rgba(60, 60, 62, 0.8);
+            }
+            
+            .shortcut-input:focus {
+                background: rgba(60, 60, 62, 0.5);
+            }
+        }
+
+        .shortcut-input.recording {
+            border-color: #34c759;
+            background: rgba(52, 199, 89, 0.1);
+        }
+
+        /* Select dropdown */
+        .setting-select {
+            width: 100%;
+            padding: 10px 12px;
+            border: 1px solid #d1d1d6;
+            border-radius: 8px;
+            font-size: 14px;
+            background: white;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .setting-select:focus {
+            outline: none;
+            border-color: #007aff;
+            box-shadow: 0 0 0 3px rgba(0, 122, 255, 0.1);
+        }
+
+        @media (prefers-color-scheme: dark) {
+            .setting-select {
+                background: rgba(60, 60, 62, 0.5);
+                border: 1px solid rgba(255, 255, 255, 0.15);
+                color: #f5f5f7;
+            }
+        }
+
+        /* Checkbox */
+        .setting-checkbox {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .checkbox-input {
+            width: 20px;
+            height: 20px;
+            cursor: pointer;
+        }
+
+        /* Slider */
+        .setting-slider {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .slider-input {
+            flex: 1;
+            height: 6px;
+            border-radius: 3px;
+            background: #e5e5ea;
+            outline: none;
+            -webkit-appearance: none;
+        }
+
+        .slider-input::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: #007aff;
+            cursor: pointer;
+        }
+
+        @media (prefers-color-scheme: dark) {
+            .slider-input {
+                background: rgba(60, 60, 62, 0.8);
+            }
+        }
+
+        .slider-value {
+            min-width: 50px;
+            text-align: right;
+            font-size: 14px;
+            color: #6e6e73;
+        }
+
+        @media (prefers-color-scheme: dark) {
+            .slider-value {
+                color: #98989d;
+            }
+        }
+
+        /* Buttons */
+        .settings-footer {
+            padding: 20px 30px;
+            border-top: 1px solid #e5e5e7;
+            display: flex;
+            gap: 12px;
+            justify-content: flex-end;
+            background: rgba(255, 255, 255, 0.8);
+            backdrop-filter: blur(10px);
+        }
+
+        @media (prefers-color-scheme: dark) {
+            .settings-footer {
+                background: rgba(44, 44, 46, 0.8);
+                border-top: 1px solid rgba(255, 255, 255, 0.1);
+            }
+        }
+
+        .btn {
+            padding: 8px 20px;
+            border-radius: 6px;
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s;
+            border: none;
+        }
+
+        .btn-primary {
+            background: #007aff;
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: #0051d5;
+        }
+
+        .btn-secondary {
+            background: #f2f2f7;
+            color: #1d1d1f;
+        }
+
+        .btn-secondary:hover {
+            background: #e5e5ea;
+        }
+
+        @media (prefers-color-scheme: dark) {
+            .btn-secondary {
+                background: rgba(60, 60, 62, 0.8);
+                color: #f5f5f7;
+            }
+            
+            .btn-secondary:hover {
+                background: rgba(60, 60, 62, 1);
+            }
+        }
+
+        .btn-danger {
+            background: #ff3b30;
+            color: white;
+        }
+
+        .btn-danger:hover {
+            background: #d70015;
+        }
+
+        /* Toast notification */
+        .toast {
+            position: fixed;
+            bottom: 30px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(52, 199, 89, 0.95);
+            color: white;
+            padding: 12px 24px;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 500;
+            opacity: 0;
+            animation: toastSlide 2s ease-out;
+            backdrop-filter: blur(10px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+        }
+
+        @keyframes toastSlide {
+            0% {
+                opacity: 0;
+                transform: translateX(-50%) translateY(20px);
+            }
+            10%, 90% {
+                opacity: 1;
+                transform: translateX(-50%) translateY(0);
+            }
+            100% {
+                opacity: 0;
+                transform: translateX(-50%) translateY(20px);
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="settings-window">
+        <div class="settings-header">
+            <h1 class="settings-title">Settings</h1>
+            <button class="close-settings" onclick="closeSettings()">✕</button>
+        </div>
+
+        <div class="settings-content">
+            <!-- Keyboard Shortcuts -->
+            <div class="settings-section">
+                <h2 class="section-header">Keyboard Shortcuts</h2>
+                
+                <div class="setting-item">
+                    <label class="setting-label">Global Shortcut</label>
+                    <p class="setting-description">Press keys to record a new shortcut</p>
+                    <input type="text" 
+                           class="setting-input shortcut-input" 
+                           id="globalShortcut" 
+                           value="Cmd+Shift+S" 
+                           readonly
+                           onclick="recordShortcut(this)">
+                </div>
+
+                <div class="setting-item">
+                    <label class="setting-label">Copy & Close Shortcut</label>
+                    <input type="text" 
+                           class="setting-input shortcut-input" 
+                           id="copyCloseShortcut" 
+                           value="Enter" 
+                           readonly
+                           onclick="recordShortcut(this)">
+                </div>
+
+                <div class="setting-item">
+                    <label class="setting-label">Copy Shortcut</label>
+                    <input type="text" 
+                           class="setting-input shortcut-input" 
+                           id="copyShortcut" 
+                           value="Cmd+C" 
+                           readonly
+                           onclick="recordShortcut(this)">
+                </div>
+            </div>
+
+            <!-- Window Settings -->
+            <div class="settings-section">
+                <h2 class="section-header">Window</h2>
+                
+                <div class="setting-item">
+                    <label class="setting-label">Window Size</label>
+                    <select class="setting-select" id="windowSize">
+                        <option value="small">Small (60% of screen)</option>
+                        <option value="medium" selected>Medium (70% of screen)</option>
+                        <option value="large">Large (80% of screen)</option>
+                        <option value="fullscreen">Full Screen</option>
+                    </select>
+                </div>
+
+                <div class="setting-item">
+                    <label class="setting-label">Window Position</label>
+                    <select class="setting-select" id="windowPosition">
+                        <option value="center" selected>Center</option>
+                        <option value="top">Top</option>
+                        <option value="bottom">Bottom</option>
+                        <option value="left">Left</option>
+                        <option value="right">Right</option>
+                    </select>
+                </div>
+
+                <div class="setting-item">
+                    <label class="setting-label">Window Opacity</label>
+                    <div class="setting-slider">
+                        <input type="range" 
+                               class="slider-input" 
+                               id="windowOpacity" 
+                               min="50" 
+                               max="100" 
+                               value="98"
+                               oninput="updateSliderValue(this)">
+                        <span class="slider-value">98%</span>
+                    </div>
+                </div>
+
+                <div class="setting-item">
+                    <div class="setting-checkbox">
+                        <input type="checkbox" 
+                               class="checkbox-input" 
+                               id="alwaysOnTop" 
+                               checked>
+                        <label for="alwaysOnTop" class="setting-label">Always on Top</label>
+                    </div>
+                </div>
+
+                <div class="setting-item">
+                    <div class="setting-checkbox">
+                        <input type="checkbox" 
+                               class="checkbox-input" 
+                               id="hideOnBlur" 
+                               checked>
+                        <label for="hideOnBlur" class="setting-label">Hide When Loses Focus</label>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Appearance -->
+            <div class="settings-section">
+                <h2 class="section-header">Appearance</h2>
+                
+                <div class="setting-item">
+                    <label class="setting-label">Theme</label>
+                    <select class="setting-select" id="theme">
+                        <option value="auto" selected>Auto (Follow System)</option>
+                        <option value="light">Light</option>
+                        <option value="dark">Dark</option>
+                    </select>
+                </div>
+
+                <div class="setting-item">
+                    <label class="setting-label">Font Size</label>
+                    <select class="setting-select" id="fontSize">
+                        <option value="small">Small</option>
+                        <option value="medium" selected>Medium</option>
+                        <option value="large">Large</option>
+                    </select>
+                </div>
+
+                <div class="setting-item">
+                    <div class="setting-checkbox">
+                        <input type="checkbox" 
+                               class="checkbox-input" 
+                               id="showFavorites" 
+                               checked>
+                        <label for="showFavorites" class="setting-label">Show Favorites Section</label>
+                    </div>
+                </div>
+
+                <div class="setting-item">
+                    <div class="setting-checkbox">
+                        <input type="checkbox" 
+                               class="checkbox-input" 
+                               id="showRecent" 
+                               checked>
+                        <label for="showRecent" class="setting-label">Show Recent Section</label>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Behavior -->
+            <div class="settings-section">
+                <h2 class="section-header">Behavior</h2>
+                
+                <div class="setting-item">
+                    <div class="setting-checkbox">
+                        <input type="checkbox" 
+                               class="checkbox-input" 
+                               id="autoStart" 
+                               unchecked>
+                        <label for="autoStart" class="setting-label">Launch at Login</label>
+                    </div>
+                </div>
+
+                <div class="setting-item">
+                    <div class="setting-checkbox">
+                        <input type="checkbox" 
+                               class="checkbox-input" 
+                               id="showNotifications" 
+                               checked>
+                        <label for="showNotifications" class="setting-label">Show Notifications</label>
+                    </div>
+                </div>
+
+                <div class="setting-item">
+                    <div class="setting-checkbox">
+                        <input type="checkbox" 
+                               class="checkbox-input" 
+                               id="soundEffects" 
+                               unchecked>
+                        <label for="soundEffects" class="setting-label">Sound Effects</label>
+                    </div>
+                </div>
+
+                <div class="setting-item">
+                    <label class="setting-label">Search Delay (ms)</label>
+                    <p class="setting-description">Delay before searching while typing</p>
+                    <input type="number" 
+                           class="setting-input" 
+                           id="searchDelay" 
+                           value="150" 
+                           min="0" 
+                           max="1000">
+                </div>
+            </div>
+
+            <!-- Advanced -->
+            <div class="settings-section">
+                <h2 class="section-header">Advanced</h2>
+                
+                <div class="setting-item">
+                    <label class="setting-label">Alfred Snippets Path</label>
+                    <p class="setting-description">Location of your Alfred snippets folder</p>
+                    <input type="text" 
+                           class="setting-input" 
+                           id="snippetsPath" 
+                           value="~/Library/Application Support/Alfred/Alfred.alfredpreferences/snippets" 
+                           readonly>
+                </div>
+
+                <div class="setting-item">
+                    <button class="btn btn-secondary" onclick="clearCache()">Clear Cache</button>
+                </div>
+
+                <div class="setting-item">
+                    <button class="btn btn-danger" onclick="resetSettings()">Reset All Settings</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="settings-footer">
+            <button class="btn btn-secondary" onclick="closeSettings()">Cancel</button>
+            <button class="btn btn-primary" onclick="saveSettings()">Save Settings</button>
+        </div>
+    </div>
+
+    <script>
+        let isRecording = false;
+        let currentShortcutInput = null;
+        let settings = {};
+
+        // Load settings on startup
+        async function loadSettings() {
+            if (window.electronAPI) {
+                const loadedSettings = await window.electronAPI.getSettings();
+                settings = loadedSettings || {};
+                applySettingsToUI();
+            }
+        }
+
+        // Apply loaded settings to UI
+        function applySettingsToUI() {
+            if (settings.shortcuts) {
+                if (settings.shortcuts.global) {
+                    document.getElementById('globalShortcut').value = settings.shortcuts.global;
+                }
+                if (settings.shortcuts.copyClose) {
+                    document.getElementById('copyCloseShortcut').value = settings.shortcuts.copyClose;
+                }
+                if (settings.shortcuts.copy) {
+                    document.getElementById('copyShortcut').value = settings.shortcuts.copy;
+                }
+            }
+
+            if (settings.window) {
+                if (settings.window.size) {
+                    document.getElementById('windowSize').value = settings.window.size;
+                }
+                if (settings.window.position) {
+                    document.getElementById('windowPosition').value = settings.window.position;
+                }
+                if (settings.window.opacity !== undefined) {
+                    document.getElementById('windowOpacity').value = settings.window.opacity;
+                    document.querySelector('.slider-value').textContent = settings.window.opacity + '%';
+                }
+                if (settings.window.alwaysOnTop !== undefined) {
+                    document.getElementById('alwaysOnTop').checked = settings.window.alwaysOnTop;
+                }
+                if (settings.window.hideOnBlur !== undefined) {
+                    document.getElementById('hideOnBlur').checked = settings.window.hideOnBlur;
+                }
+            }
+
+            if (settings.appearance) {
+                if (settings.appearance.theme) {
+                    document.getElementById('theme').value = settings.appearance.theme;
+                }
+                if (settings.appearance.fontSize) {
+                    document.getElementById('fontSize').value = settings.appearance.fontSize;
+                }
+                if (settings.appearance.showFavorites !== undefined) {
+                    document.getElementById('showFavorites').checked = settings.appearance.showFavorites;
+                }
+                if (settings.appearance.showRecent !== undefined) {
+                    document.getElementById('showRecent').checked = settings.appearance.showRecent;
+                }
+            }
+
+            if (settings.behavior) {
+                if (settings.behavior.autoStart !== undefined) {
+                    document.getElementById('autoStart').checked = settings.behavior.autoStart;
+                }
+                if (settings.behavior.showNotifications !== undefined) {
+                    document.getElementById('showNotifications').checked = settings.behavior.showNotifications;
+                }
+                if (settings.behavior.soundEffects !== undefined) {
+                    document.getElementById('soundEffects').checked = settings.behavior.soundEffects;
+                }
+                if (settings.behavior.searchDelay !== undefined) {
+                    document.getElementById('searchDelay').value = settings.behavior.searchDelay;
+                }
+            }
+        }
+
+        // Record keyboard shortcut
+        function recordShortcut(input) {
+            if (isRecording && currentShortcutInput === input) {
+                stopRecording();
+                return;
+            }
+
+            if (isRecording) {
+                stopRecording();
+            }
+
+            isRecording = true;
+            currentShortcutInput = input;
+            input.classList.add('recording');
+            input.value = 'Press keys...';
+
+            document.addEventListener('keydown', handleShortcutRecording);
+        }
+
+        function handleShortcutRecording(e) {
+            e.preventDefault();
+            
+            const keys = [];
+            if (e.metaKey) keys.push('Cmd');
+            if (e.ctrlKey && !e.metaKey) keys.push('Ctrl');
+            if (e.altKey) keys.push('Alt');
+            if (e.shiftKey) keys.push('Shift');
+            
+            // Get the actual key
+            let key = e.key;
+            if (key === ' ') key = 'Space';
+            if (key === 'Meta' || key === 'Control' || key === 'Alt' || key === 'Shift') {
+                return; // Don't record modifier keys alone
+            }
+            
+            // Capitalize single letters
+            if (key.length === 1) {
+                key = key.toUpperCase();
+            }
+            
+            keys.push(key);
+            
+            if (keys.length > 0) {
+                currentShortcutInput.value = keys.join('+');
+                stopRecording();
+            }
+        }
+
+        function stopRecording() {
+            if (currentShortcutInput) {
+                currentShortcutInput.classList.remove('recording');
+                if (currentShortcutInput.value === 'Press keys...') {
+                    currentShortcutInput.value = '';
+                }
+            }
+            isRecording = false;
+            currentShortcutInput = null;
+            document.removeEventListener('keydown', handleShortcutRecording);
+        }
+
+        // Update slider value display
+        function updateSliderValue(slider) {
+            const value = slider.value;
+            slider.nextElementSibling.textContent = value + '%';
+        }
+
+        // Save settings
+        async function saveSettings() {
+            const newSettings = {
+                shortcuts: {
+                    global: document.getElementById('globalShortcut').value,
+                    copyClose: document.getElementById('copyCloseShortcut').value,
+                    copy: document.getElementById('copyShortcut').value
+                },
+                window: {
+                    size: document.getElementById('windowSize').value,
+                    position: document.getElementById('windowPosition').value,
+                    opacity: parseInt(document.getElementById('windowOpacity').value),
+                    alwaysOnTop: document.getElementById('alwaysOnTop').checked,
+                    hideOnBlur: document.getElementById('hideOnBlur').checked
+                },
+                appearance: {
+                    theme: document.getElementById('theme').value,
+                    fontSize: document.getElementById('fontSize').value,
+                    showFavorites: document.getElementById('showFavorites').checked,
+                    showRecent: document.getElementById('showRecent').checked
+                },
+                behavior: {
+                    autoStart: document.getElementById('autoStart').checked,
+                    showNotifications: document.getElementById('showNotifications').checked,
+                    soundEffects: document.getElementById('soundEffects').checked,
+                    searchDelay: parseInt(document.getElementById('searchDelay').value)
+                }
+            };
+
+            if (window.electronAPI) {
+                await window.electronAPI.saveSettings(newSettings);
+                showToast('Settings saved successfully');
+                setTimeout(() => {
+                    closeSettings();
+                }, 1000);
+            }
+        }
+
+        // Reset settings
+        async function resetSettings() {
+            if (confirm('Are you sure you want to reset all settings to default?')) {
+                if (window.electronAPI) {
+                    await window.electronAPI.resetSettings();
+                    loadSettings(); // Reload default settings
+                    showToast('Settings reset to default');
+                }
+            }
+        }
+
+        // Clear cache
+        async function clearCache() {
+            if (window.electronAPI) {
+                await window.electronAPI.clearCache();
+                showToast('Cache cleared successfully');
+            }
+        }
+
+        // Close settings window
+        function closeSettings() {
+            if (window.electronAPI) {
+                window.electronAPI.closeSettings();
+            } else {
+                window.close();
+            }
+        }
+
+        // Show toast notification
+        function showToast(message) {
+            const existingToast = document.querySelector('.toast');
+            if (existingToast) {
+                existingToast.remove();
+            }
+
+            const toast = document.createElement('div');
+            toast.className = 'toast';
+            toast.innerHTML = '✓ ' + message;
+            document.body.appendChild(toast);
+
+            setTimeout(() => {
+                toast.remove();
+            }, 2000);
+        }
+
+        // Handle ESC key
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape' && !isRecording) {
+                closeSettings();
+            }
+        });
+
+        // Load settings when page loads
+        document.addEventListener('DOMContentLoaded', loadSettings);
+    </script>
+</body>
+</html>

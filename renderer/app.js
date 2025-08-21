@@ -1,4 +1,4 @@
-// Main application logic for Alfred Snippets Overflow
+// Main application logic for Alfred Lens
 class SnippetsApp {
   constructor() {
     this.snippetsData = null;
@@ -31,58 +31,158 @@ class SnippetsApp {
 
   async loadSnippets() {
     try {
-      const data = await window.electronAPI.loadSnippets();
+      const response = await window.electronAPI.loadSnippets();
+      console.log('Load snippets response:', response);
+      
+      // Handle the response format from IPC
+      let data;
+      if (response && response.success && response.data) {
+        data = response.data;
+      } else if (response && response.snippets) {
+        data = response;
+      } else {
+        console.warn('Unexpected response format, using mock data');
+        this.loadMockData();
+        return;
+      }
+      
+      console.log('Snippets data:', data);
+      
       this.snippetsData = data;
       this.currentSnippets = data.snippets || [];
-      this.renderCategories();
-      this.renderSnippets();
       
-      // Select first snippet if available
-      if (this.currentSnippets.length > 0) {
-        this.selectSnippet(0);
-      }
+      // Render categories in sidebar
+      this.renderCategories();
+      
+      // Select "All Snippets" by default
+      this.selectCategory('all');
+      
     } catch (error) {
       console.error('Failed to load snippets:', error);
       this.showError('Failed to load snippets');
+      
+      // Show mock data if loading fails
+      this.loadMockData();
     }
+  }
+  
+  loadMockData() {
+    // Load mock data for testing
+    this.snippetsData = {
+      categories: {
+        'React': {
+          name: 'React',
+          snippets: [
+            {
+              id: 'mock-1',
+              name: 'React Functional Component',
+              keyword: 'rfc',
+              content: 'import React from \'react\';\n\nconst Component = () => {\n  return <div>Component</div>;\n};\n\nexport default Component;',
+              category: 'React'
+            },
+            {
+              id: 'mock-2',
+              name: 'useState Hook',
+              keyword: 'rstate',
+              content: 'const [state, setState] = useState(initialValue);',
+              category: 'React'
+            }
+          ]
+        },
+        'JavaScript': {
+          name: 'JavaScript',
+          snippets: [
+            {
+              id: 'mock-3',
+              name: 'Console Log',
+              keyword: 'cl',
+              content: 'console.log($1);',
+              category: 'JavaScript'
+            }
+          ]
+        }
+      },
+      snippets: [],
+      totalCount: 0
+    };
+    
+    // Flatten all snippets
+    const allSnippets = [];
+    Object.values(this.snippetsData.categories).forEach(cat => {
+      allSnippets.push(...cat.snippets);
+    });
+    this.snippetsData.snippets = allSnippets;
+    this.snippetsData.totalCount = allSnippets.length;
+    
+    this.currentSnippets = allSnippets;
+    this.renderCategories();
+    this.selectCategory('all');
   }
 
   renderCategories() {
     const sidebar = document.querySelector('.sidebar');
-    if (!this.snippetsData || !this.snippetsData.categories) return;
-    
-    // Clear existing categories
-    const categoriesSection = sidebar.querySelector('.sidebar-section:first-child');
-    if (!categoriesSection) return;
-    
-    // Keep the section title
-    const sectionTitle = categoriesSection.querySelector('.section-title');
-    categoriesSection.innerHTML = '';
-    if (sectionTitle) {
-      categoriesSection.appendChild(sectionTitle);
-    } else {
-      categoriesSection.innerHTML = '<div class="section-title">Categories</div>';
+    if (!sidebar) {
+      console.error('Sidebar not found');
+      return;
     }
+    
+    if (!this.snippetsData || !this.snippetsData.categories) {
+      console.warn('No categories data available');
+      return;
+    }
+    
+    // Find or create categories section
+    let categoriesSection = sidebar.querySelector('.sidebar-section:first-child');
+    if (!categoriesSection) {
+      categoriesSection = document.createElement('div');
+      categoriesSection.className = 'sidebar-section';
+      sidebar.insertBefore(categoriesSection, sidebar.firstChild);
+    }
+    
+    // Clear and rebuild
+    categoriesSection.innerHTML = '<div class="section-title">CATEGORIES</div>';
     
     // Add "All Snippets" option
     const allItem = this.createCategoryElement({
       id: 'all',
       name: 'All Snippets',
-      icon: '📚',
       count: this.snippetsData.totalCount || 0
     });
-    allItem.classList.add('active');
     categoriesSection.appendChild(allItem);
     
     // Add categories
-    for (const [categoryName, categoryData] of Object.entries(this.snippetsData.categories)) {
+    for (const [categoryName, categoryData] of Object.entries(this.snippetsData.categories || {})) {
       const categoryItem = this.createCategoryElement({
         id: categoryName,
         name: categoryData.name || categoryName,
-        icon: categoryData.icon || '📁',
         count: categoryData.snippets ? categoryData.snippets.length : 0
       });
       categoriesSection.appendChild(categoryItem);
+    }
+    
+    // Find or create special sections
+    let specialSection = sidebar.querySelector('.sidebar-section:last-child');
+    if (!specialSection || specialSection === categoriesSection) {
+      specialSection = document.createElement('div');
+      specialSection.className = 'sidebar-section';
+      specialSection.innerHTML = `
+        <div class="section-title">QUICK ACCESS</div>
+        <div class="special-section" data-category="favorites">
+          <span class="category-name">Favorites</span>
+        </div>
+        <div class="special-section" data-category="recent">
+          <span class="category-name">Recent</span>
+        </div>
+      `;
+      sidebar.appendChild(specialSection);
+      
+      // Add click handlers to special sections
+      specialSection.querySelectorAll('.special-section').forEach(section => {
+        section.addEventListener('click', () => {
+          const categoryId = section.dataset.category;
+          this.selectCategory(categoryId);
+        });
+      });
     }
   }
 
@@ -91,7 +191,6 @@ class SnippetsApp {
     div.className = 'category-item';
     div.dataset.category = category.id;
     div.innerHTML = `
-      <span class="category-icon">${category.icon}</span>
       <span class="category-name">${category.name}</span>
       <span class="category-count">(${category.count})</span>
     `;
@@ -104,6 +203,8 @@ class SnippetsApp {
   }
 
   selectCategory(categoryId) {
+    console.log('Selecting category:', categoryId);
+    
     // Update active state
     document.querySelectorAll('.category-item').forEach(item => {
       item.classList.remove('active');
@@ -124,9 +225,19 @@ class SnippetsApp {
     } else if (categoryId === 'recent') {
       this.currentSnippets = this.recentSnippets;
     } else {
-      const category = this.snippetsData.categories[categoryId];
-      this.currentSnippets = category ? category.snippets : [];
+      // Look for category by name (case-insensitive)
+      const category = Object.entries(this.snippetsData.categories || {})
+        .find(([key, val]) => key.toLowerCase() === categoryId.toLowerCase());
+      
+      if (category) {
+        this.currentSnippets = category[1].snippets || [];
+      } else {
+        console.warn('Category not found:', categoryId);
+        this.currentSnippets = [];
+      }
     }
+    
+    console.log('Current snippets:', this.currentSnippets.length);
     
     // Re-render snippets
     this.renderSnippets();
@@ -134,10 +245,24 @@ class SnippetsApp {
     // Select first snippet
     if (this.currentSnippets.length > 0) {
       this.selectSnippet(0);
+    } else {
+      // Clear detail view if no snippets
+      const detailView = document.querySelector('.snippet-detail');
+      if (detailView) {
+        detailView.innerHTML = '<div style="text-align: center; padding: 40px; color: #8e8e93;">Select a category with snippets</div>';
+      }
     }
   }
 
   renderSnippets() {
+    // Check if we're using accordion layout
+    const accordionContainer = document.querySelector('.snippets-accordion');
+    if (accordionContainer) {
+      // Render accordion items
+      this.renderAccordionSnippets(accordionContainer);
+      return;
+    }
+    
     const snippetList = document.querySelector('.snippet-list');
     if (!snippetList) return;
     
@@ -154,6 +279,90 @@ class SnippetsApp {
     });
   }
 
+  renderAccordionSnippets(container) {
+    container.innerHTML = '';
+    
+    if (this.currentSnippets.length === 0) {
+      container.innerHTML = '<div class="no-snippets" style="text-align: center; padding: 40px; color: #8e8e93;">No snippets found in this category</div>';
+      return;
+    }
+    
+    this.currentSnippets.forEach((snippet, index) => {
+      const accordionItem = this.createAccordionItem(snippet, index);
+      container.appendChild(accordionItem);
+    });
+  }
+
+  createAccordionItem(snippet, index) {
+    const div = document.createElement('div');
+    div.className = 'accordion-item';
+    
+    const isFavorite = this.favorites.has(snippet.id) || snippet.isFavorite;
+    
+    // Process the content to handle escape characters properly
+    const processedContent = this.processSnippetContent(snippet.content);
+    
+    div.innerHTML = `
+      <div class="accordion-header" onclick="window.toggleAccordion(this)">
+        <div class="accordion-title">
+          <span class="snippet-name">${this.escapeHtml(snippet.name)}</span>
+          <span class="snippet-folder">${this.escapeHtml(snippet.category)}</span>
+          ${snippet.keyword ? `<span class="keyword-badge">${this.escapeHtml(snippet.keyword)}</span>` : ''}
+        </div>
+        <button class="star-button ${isFavorite ? 'favorited' : ''}" onclick="event.stopPropagation(); window.app.toggleFavorite('${snippet.id}')">
+          ${isFavorite ? '★' : '☆'}
+        </button>
+      </div>
+      <div class="accordion-content">
+        <div class="accordion-body">
+          <div class="snippet-info">
+            ${snippet.keyword ? `<div>Keyword: <span>${this.escapeHtml(snippet.keyword)}</span></div>` : ''}
+            <div>Folder: <span>${this.escapeHtml(snippet.category)}</span></div>
+          </div>
+          <div class="code-preview">
+            <pre class="code-content">${processedContent}</pre>
+          </div>
+          <div class="action-buttons">
+            <button class="btn btn-primary" onclick="window.app.copySnippetById('${snippet.id}')">Copy to Clipboard</button>
+            <button class="btn btn-secondary" onclick="window.app.copyAndCloseById('${snippet.id}')">Copy & Close</button>
+          </div>
+        </div>
+      </div>
+    `;
+    
+    return div;
+  }
+
+  processSnippetContent(content) {
+    // First, handle the actual escape sequences in the string
+    // This converts literal \n in the JSON to actual newlines
+    let processed = content
+      .replace(/\\n/g, '\n')
+      .replace(/\\t/g, '\t')
+      .replace(/\\r/g, '\r')
+      .replace(/\\\\/g, '\\')
+      .replace(/\\"/g, '"')
+      .replace(/\\'/g, "'");
+    
+    // Then escape HTML entities for display
+    return this.escapeHtml(processed);
+  }
+
+  async copySnippetById(snippetId) {
+    const snippet = this.currentSnippets.find(s => s.id === snippetId);
+    if (snippet) {
+      await this.copySnippet(snippet);
+    }
+  }
+
+  async copyAndCloseById(snippetId) {
+    const snippet = this.currentSnippets.find(s => s.id === snippetId);
+    if (snippet) {
+      await this.copySnippet(snippet);
+      this.closeWindow();
+    }
+  }
+
   createSnippetCard(snippet, index) {
     const div = document.createElement('div');
     div.className = 'snippet-card';
@@ -161,6 +370,7 @@ class SnippetsApp {
     div.dataset.id = snippet.id;
     
     const isFavorite = this.favorites.has(snippet.id) || snippet.isFavorite;
+    const language = this.detectLanguage(snippet);
     
     div.innerHTML = `
       <div class="snippet-header">
@@ -172,8 +382,9 @@ class SnippetsApp {
       <div class="snippet-meta">
         ${snippet.keyword ? `<span class="keyword-badge">${this.escapeHtml(snippet.keyword)}</span>` : ''}
         <span class="category-badge">${this.escapeHtml(snippet.category)}</span>
+        <span class="category-badge" style="background: rgba(0, 122, 255, 0.1); color: #007aff;">${language}</span>
       </div>
-      <div class="snippet-preview">${this.escapeHtml(this.truncateContent(snippet.content))}</div>
+      <div class="snippet-preview"><code>${this.escapeHtml(this.truncateContent(snippet.content))}</code></div>
     `;
     
     // Add click handler
@@ -219,6 +430,8 @@ class SnippetsApp {
     if (!detailView || !snippet) return;
     
     const isFavorite = this.favorites.has(snippet.id) || snippet.isFavorite;
+    const language = this.detectLanguage(snippet);
+    const processedContent = this.processSnippetContent(snippet.content);
     
     detailView.innerHTML = `
       <h2 class="detail-title">${this.escapeHtml(snippet.name)}</h2>
@@ -229,7 +442,11 @@ class SnippetsApp {
       </div>
       
       <div class="code-preview">
-        <pre class="code-content">${this.escapeHtml(snippet.content)}</pre>
+        <div class="code-header">
+          <span class="code-language">${language}</span>
+          <button class="code-copy-btn" data-action="quick-copy">Copy</button>
+        </div>
+        <pre class="code-content">${processedContent}</pre>
       </div>
       
       <div class="action-buttons">
@@ -240,6 +457,7 @@ class SnippetsApp {
         </button>
       </div>
     `;
+    
     
     // Add button handlers
     detailView.querySelector('[data-action="copy"]').addEventListener('click', () => {
@@ -255,6 +473,14 @@ class SnippetsApp {
       this.toggleFavorite(snippet.id);
       this.renderSnippetDetail(snippet);
     });
+    
+    // Quick copy button in code header
+    const quickCopyBtn = detailView.querySelector('[data-action="quick-copy"]');
+    if (quickCopyBtn) {
+      quickCopyBtn.addEventListener('click', () => {
+        this.copySnippet(snippet);
+      });
+    }
   }
 
   async copySnippet(snippet) {
@@ -266,7 +492,11 @@ class SnippetsApp {
       content = await this.expandVariables(content);
       
       // Copy to clipboard
-      await window.electronAPI.copyToClipboard(content);
+      const response = await window.electronAPI.copyToClipboard(content);
+      
+      if (!response || !response.success) {
+        throw new Error('Failed to copy to clipboard');
+      }
       
       // Add to recent
       this.addToRecent(snippet);
@@ -286,7 +516,15 @@ class SnippetsApp {
   async expandVariables(content) {
     // Replace {clipboard} with clipboard content
     if (content.includes('{clipboard}')) {
-      const clipboardContent = await window.electronAPI.getClipboard();
+      const response = await window.electronAPI.getClipboard();
+      let clipboardContent = '';
+      
+      if (response && response.success && response.content) {
+        clipboardContent = response.content;
+      } else if (typeof response === 'string') {
+        clipboardContent = response;
+      }
+      
       content = content.replace(/{clipboard}/g, clipboardContent);
     }
     
@@ -349,10 +587,12 @@ class SnippetsApp {
       });
     }
     
-    // Close button
+    // Close button - handle both the header close button
     const closeButton = document.querySelector('.close-button');
     if (closeButton) {
-      closeButton.addEventListener('click', () => {
+      closeButton.addEventListener('click', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
         this.closeWindow();
       });
     }
@@ -457,7 +697,19 @@ class SnippetsApp {
       this.currentSnippets = this.snippetsData.snippets || [];
     } else {
       // Search snippets
-      const results = await window.electronAPI.searchSnippets(query);
+      const response = await window.electronAPI.searchSnippets(query);
+      
+      // Handle the response format
+      let results;
+      if (response && response.success && response.data) {
+        results = response.data;
+      } else if (response && response.snippets) {
+        results = response;
+      } else {
+        console.warn('Unexpected search response format');
+        results = { snippets: [] };
+      }
+      
       this.currentSnippets = results.snippets || [];
     }
     
@@ -547,13 +799,96 @@ class SnippetsApp {
       .replace(/"/g, "&quot;")
       .replace(/'/g, "&#039;");
   }
+
+  detectLanguage(snippet) {
+    const content = snippet.content.toLowerCase();
+    const category = snippet.category.toLowerCase();
+    const name = snippet.name.toLowerCase();
+    
+    // Check category and name first
+    if (category.includes('react') || name.includes('react') || name.includes('jsx')) {
+      return 'jsx';
+    }
+    if (category.includes('vue') || name.includes('vue')) {
+      return 'javascript';
+    }
+    if (category.includes('python') || name.includes('python') || name.includes('py')) {
+      return 'python';
+    }
+    if (category.includes('bash') || category.includes('shell') || category.includes('linux')) {
+      return 'bash';
+    }
+    if (category.includes('sql') || name.includes('sql')) {
+      return 'sql';
+    }
+    if (category.includes('html') || name.includes('html')) {
+      return 'html';
+    }
+    if (category.includes('css') || name.includes('css') || name.includes('style')) {
+      return 'css';
+    }
+    if (category.includes('java') && !category.includes('javascript')) {
+      return 'java';
+    }
+    if (category.includes('swift') || name.includes('swift')) {
+      return 'swift';
+    }
+    if (category.includes('go') || name.includes('golang')) {
+      return 'go';
+    }
+    if (category.includes('rust') || name.includes('rust')) {
+      return 'rust';
+    }
+    if (category.includes('typescript') || name.includes('ts')) {
+      return 'typescript';
+    }
+    
+    // Check content patterns
+    if (content.includes('import react') || content.includes('jsx') || content.includes('usestate') || content.includes('useeffect')) {
+      return 'jsx';
+    }
+    if (content.includes('<!doctype') || content.includes('<html') || content.includes('<div') || content.includes('<body')) {
+      return 'html';
+    }
+    if (content.includes('def ') || content.includes('import ') && content.includes('from ') || content.includes('print(')) {
+      return 'python';
+    }
+    if (content.includes('select ') || content.includes('from ') && content.includes('where ') || content.includes('insert into')) {
+      return 'sql';
+    }
+    if (content.includes('#!/bin/bash') || content.includes('echo ') || content.includes('sudo ') || content.includes('apt-get')) {
+      return 'bash';
+    }
+    if (content.includes('function') || content.includes('const ') || content.includes('let ') || content.includes('var ') || content.includes('=>')) {
+      return 'javascript';
+    }
+    if (content.includes('{') && content.includes('}') && (content.includes('color:') || content.includes('margin:') || content.includes('padding:'))) {
+      return 'css';
+    }
+    if (content.includes('package main') || content.includes('func main()')) {
+      return 'go';
+    }
+    if (content.includes('fn main()') || content.includes('let mut')) {
+      return 'rust';
+    }
+    if (content.includes('public class') || content.includes('public static void main')) {
+      return 'java';
+    }
+    if (content.includes('func ') && content.includes('->') && content.includes('swift')) {
+      return 'swift';
+    }
+    
+    // Default to javascript as it's most common
+    return 'javascript';
+  }
+
 }
 
 // Initialize app when DOM is ready
 if (document.readyState === 'loading') {
   document.addEventListener('DOMContentLoaded', () => {
-    new SnippetsApp();
+    window.app = new SnippetsApp();
   });
 } else {
-  new SnippetsApp();
+  window.app = new SnippetsApp();
 }
