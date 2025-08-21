@@ -2,10 +2,12 @@
 
 A professional macOS application for viewing and managing Alfred snippets with an intuitive, native interface and powerful search capabilities.
 
+![Alfred Lens Screenshot](assets/screenshot.png)
+
 ![macOS](https://img.shields.io/badge/Platform-macOS-blue.svg)
 ![Electron](https://img.shields.io/badge/Built%20with-Electron-47848F.svg)
 ![License](https://img.shields.io/badge/License-MIT-green.svg)
-![Version](https://img.shields.io/badge/Version-1.0.0-brightgreen.svg)
+![Version](https://img.shields.io/badge/Version-1.0.6-brightgreen.svg)
 
 ## Download & Installation
 
@@ -13,7 +15,7 @@ A professional macOS application for viewing and managing Alfred snippets with a
 
 1. **Download the latest release:**
    - Go to the [Releases](https://github.com/JeffShomali/alfred-lens/releases/latest) page
-   - Download `Alfred.Lens-1.0.0.dmg` (or latest version)
+   - Download `Alfred.Lens-1.0.6.dmg` (or latest version)
    
 2. **Install the application:**
    - Open the downloaded DMG file
