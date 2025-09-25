@@ -17,7 +17,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   getClipboard: () => ipcRenderer.invoke('get-clipboard'),
 
   // Snippet operations
-  loadSnippets: () => ipcRenderer.invoke('load-snippets'),
+  loadSnippets: (forceReload = false) => ipcRenderer.invoke('load-snippets', forceReload),
   searchSnippets: (query) => ipcRenderer.invoke('search-snippets', query),
   getSnippetById: (id) => ipcRenderer.invoke('get-snippet-by-id', id),
 

@@ -41,6 +41,10 @@ module.exports = {
       os.homedir(),
       'Library/Application Support/Alfred/Alfred.alfredpreferences/snippets'
     ),
+    alfredDatabase: path.join(
+      os.homedir(),
+      'Library/Application Support/Alfred/Databases/snippets.alfdb'
+    ),
     appData: path.join(os.homedir(), 'Library/Application Support/AlfredLens'),
     logs: path.join(os.homedir(), 'Library/Logs/AlfredLens')
   },

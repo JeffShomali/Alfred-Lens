@@ -73,8 +73,11 @@ class IpcHandlers {
    * Register snippet handlers
    */
   registerSnippetHandlers() {
-    ipcMain.handle('load-snippets', async () => {
+    ipcMain.handle('load-snippets', async (event, forceReload = false) => {
       try {
+        if (forceReload) {
+          this.snippetsLoader.clearCache();
+        }
         const snippets = await this.snippetsLoader.loadSnippets();
         return { success: true, data: snippets };
       } catch (error) {
@@ -227,6 +230,10 @@ class IpcHandlers {
 
     ipcMain.handle('clear-cache', async () => {
       if (this.settingsManager) {
+        // Clear snippets cache first
+        if (this.snippetsLoader) {
+          this.snippetsLoader.clearCache();
+        }
         return await this.settingsManager.clearCache();
       }
       return { success: false };

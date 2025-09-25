@@ -29,7 +29,8 @@
 		"chokidar": "^3.5.3",
 		"electron-store": "^8.1.0",
 		"marked": "^9.1.0",
-		"prismjs": "^1.29.0"
+		"prismjs": "^1.29.0",
+		"sqlite3": "^5.1.7"
 	},
 	"build": {
 		"appId": "com.alfredlens.app",

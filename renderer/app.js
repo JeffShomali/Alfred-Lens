@@ -29,10 +29,10 @@ class SnippetsApp {
     this.focusSearch();
   }
 
-  async loadSnippets() {
+  async loadSnippets(forceReload = false) {
     try {
-      const response = await window.electronAPI.loadSnippets();
-      console.log('Load snippets response:', response);
+      const response = await window.electronAPI.loadSnippets(forceReload);
+      console.log('Load snippets response:', response, 'forceReload:', forceReload);
       
       // Handle the response format from IPC
       let data;
@@ -675,7 +675,7 @@ class SnippetsApp {
     // Listen for window shown event
     window.electronAPI.onWindowShown(() => {
       this.focusSearch();
-      this.loadSnippets(); // Refresh snippets
+      this.loadSnippets(true); // Force refresh snippets when window shows
     });
     
     // Listen for window hidden event

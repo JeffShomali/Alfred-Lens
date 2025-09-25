@@ -1,6 +1,6 @@
 /**
  * Snippets Loader
- * Handles loading and searching Alfred snippets
+ * Handles loading and searching Alfred snippets from SQLite database
  */
 
 const fs = require('fs').promises;
@@ -8,6 +8,7 @@ const path = require('path');
 const config = require('../config/app.config');
 const { execSync } = require('child_process');
 const os = require('os');
+const sqlite3 = require('sqlite3').verbose();
 
 class SnippetsLoader {
   constructor() {
@@ -17,7 +18,7 @@ class SnippetsLoader {
   }
 
   /**
-   * Load all snippets from Alfred preferences
+   * Load all snippets from Alfred SQLite database
    */
   async loadSnippets() {
     // Check cache
@@ -25,49 +26,111 @@ class SnippetsLoader {
       return this.snippetsCache;
     }
 
-    try {
-      const snippetsPath = config.paths.alfredSnippets;
-      const categories = await this.loadCategories(snippetsPath);
-      const allSnippets = [];
-      const categoriesData = {};
+    return new Promise(async (resolve, reject) => {
+      const dbPath = path.join(
+        os.homedir(),
+        'Library',
+        'Application Support',
+        'Alfred',
+        'Databases',
+        'snippets.alfdb'
+      );
 
-      // Load snippets from regular folders
-      for (const category of categories) {
-        const categorySnippets = await this.loadCategorySnippets(
-          path.join(snippetsPath, category)
-        );
-        
-        categoriesData[category] = {
-          name: category,
-          icon: this.getCategoryIcon(category),
-          snippets: categorySnippets
-        };
-
-        allSnippets.push(...categorySnippets);
+      // Check if database exists before attempting to open
+      try {
+        await fs.access(dbPath, fs.constants.R_OK);
+      } catch (error) {
+        console.error('Alfred snippets database not found or not readable:', dbPath);
+        reject(new Error('Alfred snippets database not found. Please ensure Alfred is installed and has snippets configured.'));
+        return;
       }
 
-      // Also load snippets from .alfredsnippets bundle files
-      const bundleSnippets = await this.loadBundleSnippets();
-      for (const [category, data] of Object.entries(bundleSnippets)) {
-        if (!categoriesData[category]) {
-          categoriesData[category] = data;
-          allSnippets.push(...data.snippets);
+      // IMPORTANT: Always open in read-only mode to protect Alfred's database
+      // This ensures we never modify or delete the Alfred snippets database
+      const db = new sqlite3.Database(dbPath, sqlite3.OPEN_READONLY, (err) => {
+        if (err) {
+          console.error('Failed to open database:', err);
+          reject(new Error('Failed to open snippets database: ' + err.message));
+          return;
         }
-      }
+      });
 
-      this.snippetsCache = {
-        categories: categoriesData,
-        snippets: allSnippets,
-        totalCount: allSnippets.length,
-        lastUpdated: new Date().toISOString()
-      };
+      const query = `
+        SELECT uid, name, keyword, snippet, collection, autoexpand
+        FROM snippets
+        ORDER BY collection, name
+      `;
 
-      this.lastLoadTime = Date.now();
-      return this.snippetsCache;
-    } catch (error) {
-      console.error('Failed to load snippets:', error);
-      throw new Error('Failed to load snippets: ' + error.message);
-    }
+      db.all(query, [], (err, rows) => {
+        if (err) {
+          console.error('Failed to query snippets:', err);
+          db.close();
+          reject(new Error('Failed to query snippets: ' + err.message));
+          return;
+        }
+
+        const allSnippets = [];
+        const categoriesData = {};
+
+        // Process each snippet
+        rows.forEach(row => {
+          const category = row.collection || 'Uncategorized';
+          const snippet = {
+            id: row.uid,
+            name: row.name,
+            keyword: row.keyword || '',
+            content: row.snippet,
+            category: category,
+            autoexpand: row.autoexpand === 1
+          };
+
+          if (!categoriesData[category]) {
+            categoriesData[category] = {
+              name: category,
+              icon: this.getCategoryIcon(category),
+              snippets: []
+            };
+          }
+
+          categoriesData[category].snippets.push(snippet);
+          allSnippets.push(snippet);
+        });
+
+        // Also load snippets from .alfredsnippets bundle files
+        this.loadBundleSnippets().then(bundleSnippets => {
+          for (const [category, data] of Object.entries(bundleSnippets)) {
+            if (!categoriesData[category]) {
+              categoriesData[category] = data;
+              allSnippets.push(...data.snippets);
+            }
+          }
+
+          this.snippetsCache = {
+            categories: categoriesData,
+            snippets: allSnippets,
+            totalCount: allSnippets.length,
+            lastUpdated: new Date().toISOString()
+          };
+
+          this.lastLoadTime = Date.now();
+          db.close();
+          resolve(this.snippetsCache);
+        }).catch(error => {
+          console.error('Failed to load bundle snippets:', error);
+          // Still resolve with database snippets even if bundle loading fails
+          this.snippetsCache = {
+            categories: categoriesData,
+            snippets: allSnippets,
+            totalCount: allSnippets.length,
+            lastUpdated: new Date().toISOString()
+          };
+
+          this.lastLoadTime = Date.now();
+          db.close();
+          resolve(this.snippetsCache);
+        });
+      });
+    });
   }
 
   /**
@@ -82,22 +145,7 @@ class SnippetsLoader {
   }
 
   /**
-   * Load categories (folders) from snippets directory
-   */
-  async loadCategories(snippetsPath) {
-    try {
-      const items = await fs.readdir(snippetsPath, { withFileTypes: true });
-      return items
-        .filter(item => item.isDirectory())
-        .map(item => item.name);
-    } catch (error) {
-      console.error('Failed to load categories:', error);
-      return [];
-    }
-  }
-
-  /**
-   * Load snippets from a category folder
+   * Helper method to load snippets from a category folder (used for bundle files)
    */
   async loadCategorySnippets(categoryPath) {
     try {
@@ -123,13 +171,13 @@ class SnippetsLoader {
   }
 
   /**
-   * Load a single snippet file
+   * Load a single snippet file (used for bundle files)
    */
   async loadSnippetFile(filePath, category) {
     try {
       const content = await fs.readFile(filePath, 'utf8');
       const data = JSON.parse(content);
-      
+
       if (data.alfredsnippet) {
         return {
           id: data.alfredsnippet.uid,
@@ -137,7 +185,7 @@ class SnippetsLoader {
           keyword: data.alfredsnippet.keyword,
           content: data.alfredsnippet.snippet,
           category: category,
-          filePath: filePath
+          autoexpand: false
         };
       }
     } catch (error) {
